@@ -55,6 +55,13 @@ if st.button("🚀 Process"):
         mau_sheet = find_sheet("Mẫu đóng lô")
 
         df_data = pd.read_excel(main_file, sheet_name=data_sheet)
+
+        # Read raw to get metadata from top rows
+        df_mau_raw = pd.read_excel(main_file, sheet_name=mau_sheet)
+        sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lô sx")
+        sl_sx_pkg = get_next_non_empty(df_mau_raw, "Số lượng sx PKG")
+
+        # Read actual data table
         df_mau = pd.read_excel(main_file, sheet_name=mau_sheet, header=12)
 
         # Fix unnamed columns & clean up whitespace/newlines
@@ -65,7 +72,7 @@ if st.button("🚀 Process"):
                 val = str(df_mau.loc[idx, col]) if idx is not None else str(col)
             else:
                 val = str(col)
-            
+
             # Clean up newlines and extra spaces
             val = " ".join(val.replace("\n", " ").replace("\r", "").split())
             new_cols.append(val)
@@ -87,10 +94,6 @@ if st.button("🚀 Process"):
                     if compact_p in str(c).lower().replace(" ", ""):
                         return df[c]
             return pd.Series([np.nan] * len(df))
-
-        # Extract values
-        sl_lo_sx = get_next_non_empty(df_mau, "Số lượng lô sx")
-        sl_sx_pkg = get_next_non_empty(df_mau, "Số lượng sx PKG")
 
         prod_name = df_data['SẢN PHẨM'].iloc[0]
         lenh_sx = df_data['Sản phẩm - lệnh sản xuất'].iloc[0]
@@ -125,10 +128,10 @@ if st.button("🚀 Process"):
         raw_data['TÊN VT'] = get_col_data(df_mau, 'Tên vật tư')
         raw_data['CĐ'] = get_col_data(df_mau, 'Công đoạn')
         raw_data['ĐM VẬT TƯ'] = get_col_data(df_mau, 'ĐM')
-        
+
         raw_data['TỔNG VT SD'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư sử dụng theo BOM'), errors='coerce')
         raw_data['SL TIÊU HAO THỰC TẾ'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư tiêu hao'), errors='coerce')
-        
+
         # Also handle potential 'tỉ lệ' vs 'tỷ lệ'
         raw_data['TỶ LỆ TH ĐM'] = pd.to_numeric(get_col_data(df_mau, ['Tỉ lệ tiêu hao định mức', 'Tỷ lệ tiêu hao định mức', 'lệ tiêu hao định mức']), errors='coerce')
 
@@ -183,7 +186,7 @@ if st.button("🚀 Process"):
         # DOWNLOAD
         # =============================
         output = io.BytesIO()
-        raw_data.to_excel(output, index=False)
+        raw_data.to_excel(output, index=False, engine='openpyxl')
         output.seek(0)
 
         st.success("✅ Done!")
