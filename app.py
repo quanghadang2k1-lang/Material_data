@@ -73,12 +73,20 @@ if st.button("🚀 Process"):
         df_mau.columns = new_cols
         df_mau = df_mau.iloc[5:].reset_index(drop=True)
 
-        # Helper to robustly find column names even with slight variations
-        def get_col(df, partial_name):
-            for c in df.columns:
-                if partial_name.lower() in str(c).lower():
-                    return c
-            return partial_name  # Fallback to the requested name
+        # Helper to robustly find column names safely
+        def get_col_data(df, possible_names):
+            if isinstance(possible_names, str):
+                possible_names = [possible_names]
+            for p_name in possible_names:
+                for c in df.columns:
+                    if p_name.lower() in str(c).lower():
+                        return df[c]
+                # Try removing spaces to match 'tỉlệ' vs 'tỉ lệ'
+                compact_p = p_name.lower().replace(" ", "")
+                for c in df.columns:
+                    if compact_p in str(c).lower().replace(" ", ""):
+                        return df[c]
+            return pd.Series([np.nan] * len(df))
 
         # Extract values
         sl_lo_sx = get_next_non_empty(df_mau, "Số lượng lô sx")
@@ -111,21 +119,18 @@ if st.button("🚀 Process"):
 
         raw_data = pd.DataFrame(columns=columns)
 
-        # Using get_col to avoid KeyErrors from slight variations
-        raw_data['MÃ VT 14'] = df_mau[get_col(df_mau, 'Mã vật tư 14 ký tự')]
-        raw_data['MÃ VT'] = df_mau[get_col(df_mau, 'Mã vật tư sử dụng 16 ký tự')]
-        raw_data['TÊN VT'] = df_mau[get_col(df_mau, 'Tên vật tư')]
-        raw_data['CĐ'] = df_mau[get_col(df_mau, 'Công đoạn')]
-        raw_data['ĐM VẬT TƯ'] = df_mau['ĐM'] if 'ĐM' in df_mau.columns else df_mau[get_col(df_mau, 'ĐM')]
+        # Safely extract columns without KeyError
+        raw_data['MÃ VT 14'] = get_col_data(df_mau, 'Mã vật tư 14 ký tự')
+        raw_data['MÃ VT'] = get_col_data(df_mau, 'Mã vật tư sử dụng 16 ký tự')
+        raw_data['TÊN VT'] = get_col_data(df_mau, 'Tên vật tư')
+        raw_data['CĐ'] = get_col_data(df_mau, 'Công đoạn')
+        raw_data['ĐM VẬT TƯ'] = get_col_data(df_mau, 'ĐM')
         
-        raw_data['TỔNG VT SD'] = pd.to_numeric(df_mau[get_col(df_mau, 'Tổng vật tư sử dụng theo BOM')], errors='coerce')
-        raw_data['SL TIÊU HAO THỰC TẾ'] = pd.to_numeric(df_mau[get_col(df_mau, 'Tổng vật tư tiêu hao')], errors='coerce')
+        raw_data['TỔNG VT SD'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư sử dụng theo BOM'), errors='coerce')
+        raw_data['SL TIÊU HAO THỰC TẾ'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư tiêu hao'), errors='coerce')
         
         # Also handle potential 'tỉ lệ' vs 'tỷ lệ'
-        ty_le_col = get_col(df_mau, 'Tỉ lệ tiêu hao định mức')
-        if ty_le_col == 'Tỉ lệ tiêu hao định mức': 
-            ty_le_col = get_col(df_mau, 'Tỷ lệ tiêu hao định mức') # fallback for 'y'
-        raw_data['TỶ LỆ TH ĐM'] = pd.to_numeric(df_mau[ty_le_col], errors='coerce')
+        raw_data['TỶ LỆ TH ĐM'] = pd.to_numeric(get_col_data(df_mau, ['Tỉ lệ tiêu hao định mức', 'Tỷ lệ tiêu hao định mức', 'lệ tiêu hao định mức']), errors='coerce')
 
         raw_data['PRODUCT'] = prod_name
         raw_data['LỆNH SX'] = lenh_sx
