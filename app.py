@@ -10,15 +10,15 @@ st.title("📊 Excel Processing Tool")
 
 st.markdown("""
 Upload:
-1. **Main Excel file** (contains "Data" + "Mẫu đóng lô")
-2. **RawData file** (contains "RawData" + "Library")
+1. **Báo cáo đóng lô hàng** (Chứa các sheets "Data" + "Mẫu đóng lô")
+2. **Báo cáo NVL (Material report)** (Chứa các sheets "RawData" + "Library")
 
-Then click **Process** to generate output.
+Click **Process** để tạo kết quả đầu ra.
 """)
 
 # Upload files
-main_file = st.file_uploader("Upload Main Excel file", type=["xlsx"])
-raw_file = st.file_uploader("Upload RawData Excel file", type=["xlsx"])
+main_file = st.file_uploader("Upload Báo cáo đóng lô hàng", type=["xlsx"])
+raw_file = st.file_uploader("Upload Báo cáo NVL", type=["xlsx"])
 
 def get_next_non_empty(df, search_text):
     for _, row in df.iterrows():
