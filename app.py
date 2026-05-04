@@ -80,6 +80,14 @@ if st.button("🚀 Process"):
         df_mau.columns = new_cols
         df_mau = df_mau.iloc[5:].reset_index(drop=True)
 
+        # End the table where 'Level' is empty
+        if 'Level' in df_mau.columns:
+            empty_level = df_mau['Level'].isna() | (df_mau['Level'].astype(str).str.strip() == '')
+
+            if empty_level.any():
+                first_empty_idx = empty_level.idxmax()
+                df_mau = df_mau.iloc[:first_empty_idx]
+
         # Helper to robustly find column names safely
         def get_col_data(df, possible_names):
             if isinstance(possible_names, str):
