@@ -176,7 +176,7 @@ if st.button("🚀 Process"):
                 return datetime.strptime(
                     f"{int(row['Year'])}-{str(row['Months'])[:3]}-17",
                     "%Y-%b-%d"
-                )
+                ).date()
             except:
                 return pd.NaT
 
