@@ -6,7 +6,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Excel Processor", layout="wide")
 
-st.title("📊 Excel Processing Tool")
+st.title("📊 Xử lí dữ liệu raw cho NVL")
 
 st.markdown("""
 Upload:
@@ -134,7 +134,7 @@ if st.button("🚀 Process"):
         raw_data['MÃ VT 14'] = get_col_data(df_mau, 'Mã vật tư 14 ký tự')
         raw_data['MÃ VT'] = get_col_data(df_mau, 'Mã vật tư sử dụng 16 ký tự')
         raw_data['TÊN VT'] = get_col_data(df_mau, 'Tên vật tư')
-        raw_data['CĐ'] = get_col_data(df_mau, 'Công đoạn')
+        raw_data['CĐ'] = get_col_data(df_mau, 'Công đoạn').replace(['TOP', 'BOT'], 'SMT')
         raw_data['ĐM VẬT TƯ'] = get_col_data(df_mau, 'ĐM')
 
         raw_data['TỔNG VT SD'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư sử dụng theo BOM'), errors='coerce')
@@ -181,10 +181,11 @@ if st.button("🚀 Process"):
 
         def make_date(row):
             try:
-                return datetime.strptime(
+                dt = datetime.strptime(
                     f"{int(row['Year'])}-{str(row['Months'])[:3]}-17",
                     "%Y-%b-%d"
-                ).date()
+                )
+                return dt.strftime("%d-%b-%Y")
             except:
                 return pd.NaT
 
