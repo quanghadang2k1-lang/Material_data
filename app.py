@@ -10,7 +10,7 @@ st.title("📊 Xử lí dữ liệu raw cho NVL")
 
 st.markdown("""
 Upload:
-1. **Báo cáo đóng lô hàng** (Chứa các sheets "Data" + "Mẫu đóng lô")
+1. **Báo cáo đóng lô hàng** (Chứa các sheets "Báo cáo tổng hợp" + "Mẫu đóng lô")
 2. **Báo cáo NVL (Material report)** (Chứa các sheets "RawData" + "Library")
 
 Click **Process** để tạo kết quả đầu ra.
@@ -51,7 +51,7 @@ if st.button("🚀 Process"):
                     return s
             raise Exception(f"Sheet '{partial}' not found")
 
-        data_sheet = find_sheet("Data")
+        data_sheet = find_sheet("Báo cáo tổng hợp")
         mau_sheet = find_sheet("Mẫu đóng lô")
 
         df_data = pd.read_excel(main_file, sheet_name=data_sheet)
@@ -103,8 +103,35 @@ if st.button("🚀 Process"):
                         return df[c]
             return pd.Series([np.nan] * len(df))
 
-        prod_name = df_data['SẢN PHẨM'].iloc[0]
-        lenh_sx = df_data['Sản phẩm - lệnh sản xuất'].iloc[0]
+        # Find prod_name by searching for "Tên sản phẩm" and getting value 3 rows down
+        prod_name = None
+        for r_idx in range(len(df_data)):
+            for c_idx in range(len(df_data.columns)):
+                val = df_data.iloc[r_idx, c_idx]
+                if isinstance(val, str) and "Tên sản phẩm" in val:
+                    if r_idx + 3 < len(df_data):
+                        prod_val = df_data.iloc[r_idx + 3, c_idx]
+                        if pd.notna(prod_val):
+                            prod_name = str(prod_val).strip()
+                    break
+            if prod_name:
+                break
+
+        # Find lenh_sx by searching for "Số lệnh:"
+        lenh_sx = None
+        for row_idx, row in df_data.iterrows():
+            for col_idx, val in enumerate(row):
+                if isinstance(val, str) and "Số lệnh:" in val:
+                    parts = val.split("Số lệnh:")
+                    if len(parts) > 1 and parts[1].strip() != "":
+                        lenh_sx = parts[1].strip()
+                    elif col_idx + 1 < len(row):
+                        next_val = row.iloc[col_idx + 1]
+                        if pd.notna(next_val):
+                            lenh_sx = str(next_val).strip()
+                    break
+            if lenh_sx:
+                break
 
         # =============================
         # READ RAW FILE
@@ -135,7 +162,7 @@ if st.button("🚀 Process"):
         raw_data['MÃ VT'] = get_col_data(df_mau, 'Mã vật tư sử dụng 16 ký tự')
         raw_data['TÊN VT'] = get_col_data(df_mau, 'Tên vật tư')
         raw_data['CĐ'] = get_col_data(df_mau, 'Công đoạn').replace(['TOP', 'BOT'], 'SMT')
-        raw_data['ĐM VẬT TƯ'] = get_col_data(df_mau, 'ĐM')
+        raw_data['ĐM VẬT TƯ'] = pd.to_numeric(get_col_data(df_mau, ['Tổng ĐM', 'ĐM']), errors='coerce')
 
         raw_data['TỔNG VT SD'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư sử dụng theo BOM'), errors='coerce')
         raw_data['SL TIÊU HAO THỰC TẾ'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư tiêu hao'), errors='coerce')
@@ -161,9 +188,9 @@ if st.button("🚀 Process"):
         raw_data['CHI PHÍ TIÊU HAO ĐM'] = raw_data['SL TIÊU HAO ĐM'] * raw_data['GIÁ TRỊ VẬT TƯ/SP']
         raw_data['CHÊNH LỆCH CHI PHÍ'] = raw_data['CHI PHÍ TIÊU HAO THỰC TẾ'] - raw_data['CHI PHÍ TIÊU HAO ĐM']
 
-        raw_data['Sản phẩm mất đồng bộ'] = np.ceil(
-            ((raw_data['SL TIÊU HAO THỰC TẾ'] - raw_data['SL TIÊU HAO ĐM']) / raw_data['ĐM VẬT TƯ'])
-        ).replace([np.inf, -np.inf], 0).fillna(0)
+        raw_sp_mat = ((raw_data['SL TIÊU HAO THỰC TẾ'] - raw_data['SL TIÊU HAO ĐM']) / raw_data['ĐM VẬT TƯ']).replace([np.inf, -np.inf], 0).fillna(0)
+        raw_data['Sản phẩm mất đồng bộ'] = np.where(raw_sp_mat < 0, np.floor(raw_sp_mat), np.ceil(raw_sp_mat))
+        raw_data['Sản phẩm mất đồng bộ'] = pd.Series(raw_data['Sản phẩm mất đồng bộ']).fillna(0)
 
         raw_data['Giá trị vật tư lãng phí/ đơn vị vật tư'] = (
             raw_data['CHI PHÍ TIÊU HAO THỰC TẾ'] / raw_data['TỔNG VT SD']
