@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import io
+import os
 from datetime import datetime
 
 st.set_page_config(page_title="Excel Processor", layout="wide")
@@ -37,6 +38,11 @@ if st.button("🚀 Process"):
     if not main_file or not raw_file:
         st.warning("Please upload both files")
         st.stop()
+
+    gif_placeholder = st.empty()
+    gif_path = "1711970569877.gif"
+    if os.path.exists(gif_path):
+        gif_placeholder.image(gif_path)
 
     try:
         # =============================
@@ -137,7 +143,7 @@ if st.button("🚀 Process"):
         # READ RAW FILE
         # =============================
         df_rawdata = pd.read_excel(raw_file, sheet_name="RawData",
-                                  usecols=["MÃ VT", "GIÁ TRỊ VẬT TƯ/SP"])
+                                  usecols=["MÃ VT", "GIÁ TRỊ VẬT TƯ/SP", "BoM TYPE"])
 
         df_library = pd.read_excel(raw_file, sheet_name="Library", header=1)
         df_library.columns = [str(c).strip() for c in df_library.columns]
@@ -183,6 +189,8 @@ if st.button("🚀 Process"):
         # Mapping
         map_price = df_rawdata.set_index('MÃ VT')['GIÁ TRỊ VẬT TƯ/SP'].to_dict()
         raw_data['GIÁ TRỊ VẬT TƯ/SP'] = raw_data['MÃ VT'].map(map_price)
+        bom_mapping = df_rawdata.set_index('MÃ VT')['BoM TYPE'].to_dict()
+        raw_data['BoM TYPE'] = raw_data['MÃ VT'].map(bom_mapping)
 
         raw_data['CHI PHÍ TIÊU HAO THỰC TẾ'] = raw_data['SL TIÊU HAO THỰC TẾ'] * raw_data['GIÁ TRỊ VẬT TƯ/SP']
         raw_data['CHI PHÍ TIÊU HAO ĐM'] = raw_data['SL TIÊU HAO ĐM'] * raw_data['GIÁ TRỊ VẬT TƯ/SP']
@@ -224,6 +232,8 @@ if st.button("🚀 Process"):
         output = io.BytesIO()
         raw_data.to_excel(output, index=False, engine='openpyxl')
         output.seek(0)
+        
+        gif_placeholder.empty()
 
         st.success("✅ Done!")
 
@@ -237,4 +247,5 @@ if st.button("🚀 Process"):
         st.dataframe(raw_data.head())
 
     except Exception as e:
+        gif_placeholder.empty()
         st.error(f"❌ Error: {e}")
