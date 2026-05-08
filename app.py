@@ -1,3 +1,4 @@
+%%writefile app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -42,7 +43,10 @@ if st.button("🚀 Process"):
     gif_placeholder = st.empty()
     gif_path = "1711970569877.gif"
     if os.path.exists(gif_path):
-        gif_placeholder.image(gif_path)
+        with gif_placeholder.container():
+            col1, col2, col3 = st.columns([1, 2, 1])
+            with col2:
+                st.image(gif_path)
 
     try:
         # =============================
@@ -232,7 +236,7 @@ if st.button("🚀 Process"):
         output = io.BytesIO()
         raw_data.to_excel(output, index=False, engine='openpyxl')
         output.seek(0)
-        
+
         gif_placeholder.empty()
 
         st.success("✅ Done!")
