@@ -11,7 +11,7 @@ st.set_page_config(page_title="Excel Processor", layout="wide")
 st.title("📊 Xử lí dữ liệu raw cho NVL")
 
 st.markdown("""
-Cập nhật các cột (Sản phẩm, LỆNH SX) trong Sheet "library" của file "Material report" với thông tin của lô hàng mới trước khi upload file
+Cập nhật các cột (Sản phẩm, LỆNH SX) trong Sheet library của file Material report với thông tin của lô hàng mới trước khi upload file
 
 Upload:
 1. **Báo cáo đóng lô hàng** (Chứa các sheets "Báo cáo tổng hợp" + "Mẫu đóng lô")
@@ -251,12 +251,12 @@ if st.button("🚀 Process"):
 
         gif_placeholder.empty()
 
-        st.success("✅ Done! Ấn download để tải file excel về và copy kết quả sang Báo cáo NVL (Material report) và xử lí nốt các cột.")
+        st.success("✅ Done! Ấn download để tải file excel về. Copy kết quả sang Báo cáo NVL (Material report) và xử lí nốt các cột.")
 
         st.download_button(
             label="📥 Download Result",
             data=output,
-            file_name="processed_data.xlsx",
+            file_name="RawData.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
 
