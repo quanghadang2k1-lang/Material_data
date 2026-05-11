@@ -11,7 +11,7 @@ st.set_page_config(page_title="Excel Processor", layout="wide")
 st.title("📊 Xử lí dữ liệu raw cho NVL")
 
 st.markdown("""
-Cập nhật các cột (Sản phẩm, LỆNH SX) Sheet library của file Material report với thông tin của lô hàng mới trước khi upload file
+Cập nhật các cột (Sản phẩm, LỆNH SX) trong Sheet "library" của file "Material report" với thông tin của lô hàng mới trước khi upload file
 
 Upload:
 1. **Báo cáo đóng lô hàng** (Chứa các sheets "Báo cáo tổng hợp" + "Mẫu đóng lô")
