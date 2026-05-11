@@ -4,12 +4,15 @@ import numpy as np
 import io
 import os
 from datetime import datetime
+import openpyxl
 
 st.set_page_config(page_title="Excel Processor", layout="wide")
 
 st.title("📊 Xử lí dữ liệu raw cho NVL")
 
 st.markdown("""
+Cập nhật các cột (Sản phẩm, LỆNH SX) Sheet library của file Material report với thông tin của lô hàng mới trước khi upload file
+
 Upload:
 1. **Báo cáo đóng lô hàng** (Chứa các sheets "Báo cáo tổng hợp" + "Mẫu đóng lô")
 2. **Báo cáo NVL (Material report)** (Chứa các sheets "RawData" + "Library")
@@ -24,13 +27,15 @@ raw_file = st.file_uploader("Upload Báo cáo NVL", type=["xlsx"])
 def get_next_non_empty(df, search_text):
     for _, row in df.iterrows():
         for col_idx, val in enumerate(row):
-            if isinstance(val, str) and search_text.lower() in val.lower():
-                for next_val in row.iloc[col_idx+1:]:
-                    if pd.notna(next_val) and str(next_val).strip() != '':
-                        try:
-                            return int(float(next_val))
-                        except:
-                            continue
+            if isinstance(val, str):
+                clean_val = " ".join(val.replace("\n", " ").split())
+                if search_text.lower() in clean_val.lower():
+                    for next_val in row.iloc[col_idx+1:]:
+                        if pd.notna(next_val) and str(next_val).strip() != '':
+                            try:
+                                return int(float(next_val))
+                            except:
+                                continue
     return None
 
 if st.button("🚀 Process"):
@@ -51,27 +56,34 @@ if st.button("🚀 Process"):
         # =============================
         # READ MAIN FILE
         # =============================
-        xls = pd.ExcelFile(main_file)
-        sheet_names = xls.sheet_names
+        # Use openpyxl to get ONLY visible sheets
+        wb_check = openpyxl.load_workbook(main_file, read_only=True)
+        sheet_names = [ws.title for ws in wb_check.worksheets if ws.sheet_state == 'visible']
+        wb_check.close()
+
+        # Reset main_file pointer after reading with openpyxl
+        main_file.seek(0)
 
         def find_sheet(partial):
             for s in sheet_names:
                 if partial.lower() in s.lower():
                     return s
-            raise Exception(f"Sheet '{partial}' not found")
+            raise Exception(f"Sheet '{partial}' not found among visible sheets")
 
         data_sheet = find_sheet("Báo cáo tổng hợp")
         mau_sheet = find_sheet("Mẫu đóng lô")
 
-        df_data = pd.read_excel(main_file, sheet_name=data_sheet)
+        df_data = pd.read_excel(main_file, sheet_name=data_sheet, engine="openpyxl")
+        main_file.seek(0)
 
         # Read raw to get metadata from top rows
-        df_mau_raw = pd.read_excel(main_file, sheet_name=mau_sheet)
+        df_mau_raw = pd.read_excel(main_file, sheet_name=mau_sheet, engine="openpyxl")
         sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lô sx")
         sl_sx_pkg = get_next_non_empty(df_mau_raw, "Số lượng sx PKG")
+        main_file.seek(0)
 
         # Read actual data table
-        df_mau = pd.read_excel(main_file, sheet_name=mau_sheet, header=12)
+        df_mau = pd.read_excel(main_file, sheet_name=mau_sheet, header=12, engine="openpyxl")
 
         # Fix unnamed columns & clean up whitespace/newlines
         new_cols = []
@@ -146,9 +158,10 @@ if st.button("🚀 Process"):
         # READ RAW FILE
         # =============================
         df_rawdata = pd.read_excel(raw_file, sheet_name="RawData",
-                                  usecols=["MÃ VT", "GIÁ TRỊ VẬT TƯ/SP", "BoM TYPE"])
+                                  usecols=["MÃ VT", "GIÁ TRỊ VẬT TƯ/SP", "BoM TYPE"], engine="openpyxl")
+        raw_file.seek(0)
 
-        df_library = pd.read_excel(raw_file, sheet_name="Library", header=1)
+        df_library = pd.read_excel(raw_file, sheet_name="Library", header=1, engine="openpyxl")
         df_library.columns = [str(c).strip() for c in df_library.columns]
 
         # =============================
@@ -238,7 +251,7 @@ if st.button("🚀 Process"):
 
         gif_placeholder.empty()
 
-        st.success("✅ Done!")
+        st.success("✅ Done! Ấn download để tải file excel về và copy kết quả sang Báo cáo NVL (Material report) và xử lí nốt các cột.")
 
         st.download_button(
             label="📥 Download Result",
