@@ -1,3 +1,4 @@
+%%writefile app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -101,9 +102,11 @@ if st.button("🚀 Process"):
         df_mau.columns = new_cols
         df_mau = df_mau.iloc[5:].reset_index(drop=True)
 
-        # End the table where 'Level' is empty
-        if 'Level' in df_mau.columns:
-            empty_level = df_mau['Level'].isna() | (df_mau['Level'].astype(str).str.strip() == '')
+        # End the table where 'Level' (case-insensitive) is empty
+        level_col = next((c for c in df_mau.columns if str(c).strip().lower() == 'level'), None)
+
+        if level_col:
+            empty_level = df_mau[level_col].isna() | (df_mau[level_col].astype(str).str.strip() == '')
 
             if empty_level.any():
                 first_empty_idx = empty_level.idxmax()
@@ -124,16 +127,18 @@ if st.button("🚀 Process"):
                         return df[c]
             return pd.Series([np.nan] * len(df))
 
-        # Find prod_name by searching for "Tên sản phẩm" and getting value 3 rows down
+        # Find prod_name by searching for "Tên sản phẩm" and getting value 3, 2, or 1 rows down
         prod_name = None
         for r_idx in range(len(df_data)):
             for c_idx in range(len(df_data.columns)):
                 val = df_data.iloc[r_idx, c_idx]
                 if isinstance(val, str) and "Tên sản phẩm" in val:
-                    if r_idx + 3 < len(df_data):
-                        prod_val = df_data.iloc[r_idx + 3, c_idx]
-                        if pd.notna(prod_val):
-                            prod_name = str(prod_val).strip()
+                    for offset in [3, 2, 1]:
+                        if r_idx + offset < len(df_data):
+                            prod_val = df_data.iloc[r_idx + offset, c_idx]
+                            if pd.notna(prod_val) and str(prod_val).strip() != '':
+                                prod_name = str(prod_val).strip()
+                                break
                     break
             if prod_name:
                 break
@@ -184,9 +189,9 @@ if st.button("🚀 Process"):
         raw_data['MÃ VT'] = get_col_data(df_mau, 'Mã vật tư sử dụng 16 ký tự')
         raw_data['TÊN VT'] = get_col_data(df_mau, 'Tên vật tư')
         raw_data['CĐ'] = get_col_data(df_mau, 'Công đoạn').replace(['TOP', 'BOT'], 'SMT')
-        raw_data['ĐM VẬT TƯ'] = pd.to_numeric(get_col_data(df_mau, ['Tổng ĐM', 'ĐM']), errors='coerce')
+        raw_data['ĐM VẬT TƯ'] = pd.to_numeric(get_col_data(df_mau, ['Tổng ĐM', 'ĐM', 'TỔNG ĐM']), errors='coerce')
 
-        raw_data['TỔNG VT SD'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư sử dụng theo BOM'), errors='coerce')
+        raw_data['TỔNG VT SD'] = pd.to_numeric(get_col_data(df_mau, ['Tổng vật tư sử dụng theo BOM', 'Vật tư sử dụng trong LSX']), errors='coerce')
         raw_data['SL TIÊU HAO THỰC TẾ'] = pd.to_numeric(get_col_data(df_mau, 'Tổng vật tư tiêu hao'), errors='coerce')
 
         # Also handle potential 'tỉ lệ' vs 'tỷ lệ'
