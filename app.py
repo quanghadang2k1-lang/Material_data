@@ -6,6 +6,9 @@ import os
 from datetime import datetime
 import openpyxl
 
+# Opt-in to future pandas behavior to avoid FutureWarning during replace
+pd.set_option('future.no_silent_downcasting', True)
+
 st.set_page_config(page_title="Excel Processor", layout="wide")
 
 st.title("📊 Xử lí dữ liệu raw cho NVL")
@@ -79,6 +82,7 @@ if st.button("🚀 Process"):
         # Read raw to get metadata from top rows
         df_mau_raw = pd.read_excel(main_file, sheet_name=mau_sheet, engine="openpyxl")
         sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lô sx")
+        sl_sx_pcba = get_next_non_empty(df_mau_raw, "Số lượng sx PCBA")
         sl_sx_pkg = get_next_non_empty(df_mau_raw, "Số lượng sx PKG")
         main_file.seek(0)
 
@@ -199,7 +203,7 @@ if st.button("🚀 Process"):
         raw_data['PRODUCT'] = prod_name
         raw_data['LỆNH SX'] = lenh_sx
         raw_data.loc[0, 'SL CỦA LỆNH'] = sl_lo_sx
-        raw_data.loc[0, 'KQSX'] = sl_sx_pkg
+        raw_data.loc[0, 'KQSX'] = sl_sx_pkg if sl_sx_pkg is not None else sl_sx_pcba
 
         raw_data['SL TIÊU HAO ĐM'] = raw_data['TỔNG VT SD'] * raw_data['TỶ LỆ TH ĐM']
         raw_data['TỶ LỆ TH THỰC TẾ'] = (
