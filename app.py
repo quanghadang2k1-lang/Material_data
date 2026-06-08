@@ -67,14 +67,17 @@ if st.button("🚀 Process"):
         # Reset main_file pointer after reading with openpyxl
         main_file.seek(0)
 
-        def find_sheet(partial):
-            for s in sheet_names:
-                if partial.lower() in s.lower():
-                    return s
-            raise Exception(f"Sheet '{partial}' not found among visible sheets")
+        def find_sheet(partial_list):
+            if isinstance(partial_list, str):
+                partial_list = [partial_list]
+            for partial in partial_list:
+                for s in sheet_names:
+                    if partial.lower() in s.lower():
+                        return s
+            raise Exception(f"Sheet containing any of {partial_list} not found among visible sheets")
 
-        data_sheet = find_sheet("Báo cáo tổng hợp")
-        mau_sheet = find_sheet("Mẫu đóng lô")
+        data_sheet = find_sheet(["Báo cáo tổng hợp", "BÁO CÁO ĐÓNG LỆNH"])
+        mau_sheet = find_sheet(["Mẫu đóng lô"])
 
         df_data = pd.read_excel(main_file, sheet_name=data_sheet, engine="openpyxl")
         main_file.seek(0)
@@ -84,10 +87,21 @@ if st.button("🚀 Process"):
         sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lô sx")
         sl_sx_pcba = get_next_non_empty(df_mau_raw, "Số lượng sx PCBA")
         sl_sx_pkg = get_next_non_empty(df_mau_raw, "Số lượng sx PKG")
+        if sl_lo_sx is None:
+            sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lệnh sx")
         main_file.seek(0)
 
-        # Read actual data table
-        df_mau = pd.read_excel(main_file, sheet_name=mau_sheet, header=12, engine="openpyxl")
+        # Read actual data table without header to find 'Level'
+        temp_df = pd.read_excel(main_file, sheet_name=mau_sheet, header=None, engine="openpyxl")
+        main_file.seek(0)
+
+        header_idx = 12 # default fallback
+        for idx, row in temp_df.iterrows():
+            if any(str(cell).strip().lower() == 'level' for cell in row):
+                header_idx = idx
+                break
+
+        df_mau = pd.read_excel(main_file, sheet_name=mau_sheet, header=header_idx, engine="openpyxl")
 
         # Fix unnamed columns & clean up whitespace/newlines
         new_cols = []
@@ -105,14 +119,15 @@ if st.button("🚀 Process"):
         df_mau.columns = new_cols
         df_mau = df_mau.iloc[5:].reset_index(drop=True)
 
-        # End the table where 'Level' (case-insensitive) is empty
+        # End the table where 'Level' (case-insensitive) is empty or has value 'Tổng'
         level_col = next((c for c in df_mau.columns if str(c).strip().lower() == 'level'), None)
 
         if level_col:
-            empty_level = df_mau[level_col].isna() | (df_mau[level_col].astype(str).str.strip() == '')
+            level_str = df_mau[level_col].astype(str).str.strip().str.lower()
+            end_condition = df_mau[level_col].isna() | (level_str == '') | (level_str == 'tổng')
 
-            if empty_level.any():
-                first_empty_idx = empty_level.idxmax()
+            if end_condition.any():
+                first_empty_idx = end_condition.idxmax()
                 df_mau = df_mau.iloc[:first_empty_idx]
 
         # Helper to robustly find column names safely
