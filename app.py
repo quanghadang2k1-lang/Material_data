@@ -180,12 +180,16 @@ if st.button("🚀 Process"):
         # =============================
         # READ RAW FILE
         # =============================
+        raw_file.seek(0) # Reset pointer for first read
         df_rawdata = pd.read_excel(raw_file, sheet_name="RawData",
                                   usecols=["MÃ VT", "GIÁ TRỊ VẬT TƯ/SP", "BoM TYPE"], engine="openpyxl")
-        raw_file.seek(0)
 
+        raw_file.seek(0) # Reset pointer for second read
         df_library = pd.read_excel(raw_file, sheet_name="Library", header=1, engine="openpyxl")
         df_library.columns = [str(c).strip() for c in df_library.columns]
+
+        raw_file.seek(0) # Reset pointer for third read
+        df_price = pd.read_excel(raw_file, sheet_name="Giá", usecols=["Ngày ct", "Mã vật tư", "Giá"], engine="openpyxl")
 
         # =============================
         # BUILD OUTPUT
@@ -225,11 +229,27 @@ if st.button("🚀 Process"):
             raw_data['SL TIÊU HAO THỰC TẾ'] / raw_data['TỔNG VT SD']
         ).replace([np.inf, -np.inf], 0).fillna(0)
 
-        # Mapping
-        map_price = df_rawdata.set_index('MÃ VT')['GIÁ TRỊ VẬT TƯ/SP'].to_dict()
-        raw_data['GIÁ TRỊ VẬT TƯ/SP'] = raw_data['MÃ VT'].map(map_price)
+        # Mapping BoM TYPE from df_rawdata matching MÃ VT
         bom_mapping = df_rawdata.set_index('MÃ VT')['BoM TYPE'].to_dict()
         raw_data['BoM TYPE'] = raw_data['MÃ VT'].map(bom_mapping)
+
+        # Map GIÁ TRỊ VẬT TƯ/SP from df_rawdata
+        map_price_from_rawdata = df_rawdata.set_index('MÃ VT')['GIÁ TRỊ VẬT TƯ/SP'].to_dict()
+        raw_data['GIÁ TRỊ VẬT TƯ/SP'] = raw_data['MÃ VT'].map(map_price_from_rawdata)
+
+        # Override GIÁ TRỊ VẬT TƯ/SP with values from 'df_price' dataframe if available
+        if not df_price.empty:
+            if 'Ngày ct' in df_price.columns:
+                # Sort by 'Ngày ct' to get the latest price
+                price_sorted = df_price.sort_values(by='Ngày ct', ascending=True)
+                # Keep the last (latest) entry for each 'Mã vật tư'
+                price_latest = price_sorted.drop_duplicates(subset=['Mã vật tư'], keep='last')
+                price_mapping = price_latest.set_index('Mã vật tư')['Giá'].to_dict()
+            else:
+                # If 'Ngày ct' is not present, just use the last price encountered if duplicates
+                price_mapping = df_price.set_index('Mã vật tư')['Giá'].to_dict()
+            # Fill NaNs in 'GIÁ TRỊ VẬT TƯ/SP' with values from price_mapping, or update existing ones
+            raw_data['GIÁ TRỊ VẬT TƯ/SP'] = raw_data['MÃ VT'].map(price_mapping).fillna(raw_data['GIÁ TRỊ VẬT TƯ/SP'])
 
         raw_data['CHI PHÍ TIÊU HAO THỰC TẾ'] = raw_data['SL TIÊU HAO THỰC TẾ'] * raw_data['GIÁ TRỊ VẬT TƯ/SP']
         raw_data['CHI PHÍ TIÊU HAO ĐM'] = raw_data['SL TIÊU HAO ĐM'] * raw_data['GIÁ TRỊ VẬT TƯ/SP']
