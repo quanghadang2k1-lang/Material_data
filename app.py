@@ -145,12 +145,12 @@ if st.button("🚀 Process"):
                         return df[c]
             return pd.Series([np.nan] * len(df))
 
-        # Find prod_name by searching for "Tên sản phẩm" and getting value 3, 2, or 1 rows down
+        # Find prod_name by searching for "Tên sản phẩm" or "Tên sản phầm" and getting value 3, 2, or 1 rows down
         prod_name = None
         for r_idx in range(len(df_data)):
             for c_idx in range(len(df_data.columns)):
                 val = df_data.iloc[r_idx, c_idx]
-                if isinstance(val, str) and "Tên sản phẩm" in val:
+                if isinstance(val, str) and ("Tên sản phẩm" in val or "Tên sản phầm" in val):
                     for offset in [3, 2, 1]:
                         if r_idx + offset < len(df_data):
                             prod_val = df_data.iloc[r_idx + offset, c_idx]
