@@ -77,7 +77,7 @@ if st.button("🚀 Process"):
             raise Exception(f"Sheet containing any of {partial_list} not found among visible sheets")
 
         data_sheet = find_sheet(["Báo cáo tổng hợp", "BÁO CÁO ĐÓNG LỆNH"])
-        mau_sheet = find_sheet(["Mẫu đóng lô"])
+        mau_sheet = find_sheet(["Mẫu đóng lô", "Báo cáo trừ vật tư"])
 
         df_data = pd.read_excel(main_file, sheet_name=data_sheet, engine="openpyxl")
         main_file.seek(0)
