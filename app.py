@@ -89,6 +89,8 @@ if st.button("🚀 Process"):
         sl_sx_pkg = get_next_non_empty(df_mau_raw, "Số lượng sx PKG")
         if sl_lo_sx is None:
             sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lệnh sx")
+        if sl_lo_sx is None:
+            sl_lo_sx = get_next_non_empty(df_mau_raw, "Số lượng lsx")
         main_file.seek(0)
 
         # Read actual data table without header to find 'Level'
